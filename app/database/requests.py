@@ -1,4 +1,4 @@
-from app.database.models import async_session
+from app.database.db import async_session
 from app.database.models import User, Pizza
 from sqlalchemy import select, update, delete, desc
 
