@@ -20,5 +20,4 @@ All right here. Let's get started! 🍕🔥"""
 
 @user.message(F.photo)
 async def photo(message: Message):
-    
     await message.answer(message.photo[-1].file_id)
