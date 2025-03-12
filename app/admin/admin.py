@@ -50,24 +50,18 @@ async def show_pizza_detail(callback: CallbackQuery):
     pizza = await get_pizza(pizza_id)
     
     if pizza:
-        # Create a decorative border
-        border_top = "┏━━━━━━━━━━━━━━━━━━━━┓"
-        border_bottom = "┗━━━━━━━━━━━━━━━━━━━━┛"
-        
+       
         status_icon = "🟢🟢🟢 ON SALE" if pizza.onsale else "⭕️"
         price_display = f"${pizza.price:,.2f}"
         
         caption = (
-            f"{border_top}\n"
-            f"     🍕 <b>{pizza.name.upper()}</b>\n"
-            f"━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"     🍕 <b>{pizza.name.upper()}</b>\n\n"
             f"📝 <b>Details</b>\n"
             f"• Size: {pizza.size}\n"
             f"• Price: {price_display}\n"
             f"• Status: {status_icon} \n\n"
             f"📋 <b>Description</b>\n"
             f"{pizza.about}\n\n"
-            f"{border_bottom}"
         )
         
         await callback.message.delete()
