@@ -2,7 +2,7 @@ from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command, Filter, CommandStart
 from app.admin.keyboards import get_menu_keyboard, get_pizzas_kb, get_pizza_detail_kb
-from app.database.requests import add_pizza, get_pizza, add_admin, get_all_admins
+from app.database.requests import add_pizza, get_pizza, add_admin, get_all_admins, delete_pizza
 from app.admin.states import AdminStates
 from aiogram.fsm.context import FSMContext
 
@@ -41,7 +41,7 @@ async def add_admin_handler(callback: CallbackQuery, state: FSMContext):
 @admin.message(AdminStates.waiting_for_admin_id, F.text.isdigit())
 async def add_admin_message(message: Message, state: FSMContext):
     await add_admin(int(message.text))
-    await message.answer("Admin added successfully!")
+    await message.answer("Admin added successfully!", reply_markup=await get_menu_keyboard()) # beautify later on - it should be a pop up 
     await state.clear()
 
 @admin.message(AdminStates.waiting_for_admin_id)
@@ -89,3 +89,9 @@ async def show_pizza_detail(callback: CallbackQuery):
     
     await callback.answer()
 
+@admin.callback_query(F.data.startswith("delete_pizza_"))
+async def delete_pizza_handler(callback: CallbackQuery):
+    pizza_id = int(callback.data.split("_")[-1])
+    await delete_pizza(pizza_id)
+    await callback.message.answer("🍕 Pizza Catalog", reply_markup=await get_pizzas_kb())
+    await callback.answer()

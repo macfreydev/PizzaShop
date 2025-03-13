@@ -46,6 +46,15 @@ async def get_pizza(id: int):
             select(Pizza).where(Pizza.id == id)
         )
         return result
+    
+async def delete_pizza(pizza_id: int):
+    async with async_session() as session:
+        pizza = await session.get(Pizza, pizza_id)
+        if pizza:
+            await session.delete(pizza)
+            await session.commit()
+            return True
+        return False
 
 # Admin requests
 async def add_admin(user_id: int):
