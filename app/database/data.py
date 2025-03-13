@@ -3,7 +3,7 @@ pizzas = [
         "name": "Peri Peri",
         "price": 12,
         "about": "Spicy Peri Peri chicken, onions, and signature sauce.",
-        "image": "AgACAgIAAxkBAAPUZ9HM2ZFADso04JN-XgrhDnCidRYAAgvuMRsQoJBKYbx0YnCkFMsBAAMCAAN4AAM2BA",
+        "image": "AgACAgIAAxkBAAPPZ9LsGh2-EUtzIvKf9Ky8Sy7JJZwAAp7tMRvoL5hKiD5E34uCoQYBAAMCAAN4AAM2BA",
         "size": "Medium",
         "onsale": True
     }, 

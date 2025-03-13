@@ -4,6 +4,7 @@ from sqlalchemy import select
 from app.database.data import pizzas
 
 
+
 # User requests
 async def set_user(tg_id):
     async with async_session() as session:
@@ -19,7 +20,7 @@ async def add_pizzas():
     async with async_session() as session:
         existing = await session.scalar(select(Pizza))
         if existing:
-            return
+            pass
             
         for pizza in pizzas:
             new_pizza = Pizza(
