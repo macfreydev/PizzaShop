@@ -1,12 +1,16 @@
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command, CommandStart
+
 from app.database.requests import add_pizza, set_user
+from app.database.models import async_main
 
 user = Router()
 
 @user.message(CommandStart())
 async def start(message: Message):
+    await async_main()
+    await set_user(message.from_user.id)
     await add_pizza()
     await message.answer(
         f"""🍕 Welcome {message.from_user.first_name}!
@@ -20,5 +24,4 @@ All right here. Let's get started! 🍕🔥"""
 
 @user.message(F.photo)
 async def photo(message: Message):
-    
     await message.answer(message.photo[-1].file_id)
