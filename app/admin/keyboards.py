@@ -34,8 +34,31 @@ async def get_pizza_detail_kb(pizza_id: int):
     
     kb.button(text="✏️ Edit", callback_data=f"edit_pizza_{pizza_id}")
     kb.button(text="❌ Delete", callback_data=f"delete_pizza_{pizza_id}")
-    kb.button(text="⬅️ Back to Catalog", callback_data="catalog")
+    kb.button(text="⬅️ Back", callback_data="catalog")
     
     kb.adjust(3)
     
     return kb.as_markup()
+
+def get_yes_no_kb():
+    kb = InlineKeyboardBuilder()
+    kb.button(text="✅ Yes", callback_data="sale_yes")
+    kb.button(text="❌ No", callback_data="sale_no")
+    kb.adjust(2)
+    return kb.as_markup()
+
+def get_size_kb():
+    kb = InlineKeyboardBuilder()
+    kb.button(text="S - Small", callback_data="size_S")
+    kb.button(text="M - Medium", callback_data="size_M")
+    kb.button(text="L - Large", callback_data="size_L")
+    kb.adjust(3)
+    return kb.as_markup()
+
+def confirmation_kb():
+    kb = InlineKeyboardBuilder()
+    kb.button(text="✅ Confirm", callback_data="confirm_pizza")
+    kb.button(text="❌ Cancel", callback_data="cancel_pizza")
+    kb.adjust(2)
+    return kb.as_markup()
+

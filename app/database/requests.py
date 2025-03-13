@@ -15,7 +15,7 @@ async def set_user(tg_id):
 
 
 # Pizza requests
-async def add_pizza():
+async def add_pizzas():
     async with async_session() as session:
         existing = await session.scalar(select(Pizza))
         if existing:
@@ -55,6 +55,12 @@ async def delete_pizza(pizza_id: int):
             await session.commit()
             return True
         return False
+    
+async def add_pizza(data: dict):
+    async with async_session() as session:
+        new_pizza = Pizza(**data)
+        session.add(new_pizza)
+        await session.commit()
 
 # Admin requests
 async def add_admin(user_id: int):
