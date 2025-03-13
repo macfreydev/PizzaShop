@@ -1,9 +1,10 @@
 from app.database.db import async_session
-from app.database.models import User, Pizza
-from sqlalchemy import select, update, delete, desc
+from app.database.models import User, Pizza, Admin
+from sqlalchemy import select
 from app.database.data import pizzas
 
 
+# User requests
 async def set_user(tg_id):
     async with async_session() as session:
         user = await session.scalar(select(User).where(User.tg_id == tg_id))
@@ -13,7 +14,7 @@ async def set_user(tg_id):
             await session.commit()
 
 
-
+# Pizza requests
 async def add_pizza():
     async with async_session() as session:
         existing = await session.scalar(select(Pizza))
@@ -46,4 +47,25 @@ async def get_pizza(id: int):
         )
         return result
 
+# Admin requests
+async def add_admin(user_id: int):
+    async with async_session() as session:
+        session.add(Admin(user_id=user_id))
+        await session.commit()
 
+async def get_admin(user_id: int):
+    async with async_session() as session:
+        result = await session.scalar(
+            select(Admin).where(Admin.user_id == user_id)
+        )
+        return result
+    
+async def get_all_admins():
+    async with async_session() as session:
+        result = await session.execute(
+            select(Admin, User)
+            .join(User, User.id == Admin.user_id)
+        )
+        
+        admin_users = result.fetchall()
+        return [user.tg_id for _, user in admin_users]

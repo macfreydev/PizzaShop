@@ -1,13 +1,13 @@
 from aiogram import Router, F
 from aiogram.types import Message
 from aiogram.filters import CommandStart
-from app.database.requests import add_pizza
+from app.database.requests import set_user
 
 user = Router()
 
 @user.message(CommandStart())
 async def start(message: Message):
-    await add_pizza()
+    await set_user(message.from_user.id) # register new user in db - add try catch later on for all db requests
     await message.answer(
         f"""🍕 Welcome {message.from_user.first_name}!
 Craving pizza? You’re in the right place!  
