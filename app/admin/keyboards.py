@@ -23,7 +23,7 @@ async def get_pizzas_kb():
     if pizzas:
         kb.adjust(2)
     
-    kb.row(InlineKeyboardButton(text="➕ Add Pizza", callback_data="add_pizza"))
+    kb.row(InlineKeyboardButton(text=" Add Pizza", callback_data="add_pizza"))
     kb.row(InlineKeyboardButton(text="⬅️ Back", callback_data="back_to_menu"))
     
     return kb.as_markup()

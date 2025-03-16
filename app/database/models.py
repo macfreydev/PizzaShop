@@ -29,7 +29,7 @@ class Pizza(Base):
     price: Mapped[int] = mapped_column(Integer, default=0)
     about: Mapped[str] = mapped_column(String(560))
     image: Mapped[str] = mapped_column(String(255))
-    size: Mapped[str] = mapped_column(String(15))
+    size: Mapped[int] = mapped_column(Integer)
     onsale: Mapped[bool] = mapped_column(default=False)
 
 class Cart(Base):
@@ -39,6 +39,9 @@ class Cart(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey('users.id'))
     pizza_id: Mapped[int] = mapped_column(ForeignKey('pizzas.id'))
     quantity: Mapped[int] = mapped_column(default=1)
+    size: Mapped[int] = mapped_column(Integer)
+    
+
 
 class Review(Base):
     __tablename__ = 'reviews'
