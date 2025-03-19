@@ -78,8 +78,6 @@ async def add_to_cart(user_id: int, pizza_id: int, _size: int, _quantity: int):
             session.add(Cart(user_id=user.id, pizza_id=pizza.id, size=_size, quantity=_quantity))
             await session.commit()
             return True
-        
-
 
 async def add_quantity(cart_id: int):
     async with async_session() as session:
@@ -112,7 +110,8 @@ async def delete_cart_item(cart_id: int):
 
 async def get_cart(user_id: int):
     async with async_session() as session:
-       return await session.scalars(select(Cart).where(Cart.user_id == user_id))
+       user = await session.scalar(select(User).where(User.tg_id == user_id))
+       return await session.scalars(select(Cart).where(Cart.user_id == user.id))
         
 
 # Admin requests

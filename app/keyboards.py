@@ -1,8 +1,7 @@
-from aiogram.types import (ReplyKeyboardMarkup, KeyboardButton,
-                           InlineKeyboardMarkup, InlineKeyboardButton)
-from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
-from app.database.requests import get_all_pizzas,add_pizzas, get_pizza, add_to_cart, get_cart, delete_cart_item
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
+from app.database.requests import get_all_pizzas,add_pizzas, get_pizza, add_to_cart, get_cart, delete_cart_item
 
 menu = InlineKeyboardMarkup(
     inline_keyboard=[
@@ -68,34 +67,37 @@ async def proceed_to_pay():
 
 async def cart_kb(user_id):
     cart = await get_cart(user_id)  
+
     if not cart:
         return None 
+
     keyboard = InlineKeyboardBuilder()
+
     for item in cart:
-        pizza = await get_pizza(item.pizza_id)
-        keyboard.add(
-                InlineKeyboardButton(
-                    text=f"{pizza.name} {item.size}",
-                    callback_data=f"cart_{item.id}"
-                ),
-                InlineKeyboardButton(
-                    text="➕", 
-                    callback_data=f"add_{item.id}"
-                ),
-                InlineKeyboardButton(
-                    text=str(item.quantity),
-                    callback_data=f"quantity_{item.id}"
-                ),
-                InlineKeyboardButton(
-                    text="➖", 
-                    callback_data=f"remove_{item.id}"
-                )
+        pizza = await get_pizza(item.user_id)
+            # First row: Pizza name & size
+        keyboard.row(
+            InlineKeyboardButton(
+                text=f"{pizza.name} | {pizza.size}",
+                callback_data=f"cart_{item.id}"
             )
-        keyboard.row()
-        keyboard.add(InlineKeyboardButton(text="🏠Menu", callback_data="menu"),
-                 InlineKeyboardButton(text="💳Pay", callback_data="pay")).adjust(2)
+        )
         
+        # Second row: +, quantity, - buttons
+        keyboard.row(
+            InlineKeyboardButton(text="➕", callback_data=f"add_{item.id}"),
+            InlineKeyboardButton(text=str(item.quantity), callback_data=f"quantity_{item.id}"),
+            InlineKeyboardButton(text="➖", callback_data=f"remove_{item.id}")
+        )
+        
+ 
+    keyboard.row(
+        InlineKeyboardButton(text="🏠 Menu", callback_data="menu"),
+        InlineKeyboardButton(text="💳 Pay", callback_data="pay")
+    )
+    
     return keyboard.as_markup()
+
 
 async def pay_kb():
     keyboard = InlineKeyboardBuilder()  
