@@ -1,7 +1,8 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-from app.database.requests import get_all_pizzas,add_pizzas, get_pizza, add_to_cart, get_cart, delete_cart_item
+from app.database.requests import get_all_pizzas,add_pizzas, get_pizza, get_cart
+from app.database.data import sizes
 
 menu = InlineKeyboardMarkup(
     inline_keyboard=[
@@ -11,7 +12,7 @@ menu = InlineKeyboardMarkup(
         ],
         [
             InlineKeyboardButton(text="🎉 Sales", callback_data="sales"),
-            InlineKeyboardButton(text="🔍 Reviews", callback_data="reviews")
+            InlineKeyboardButton(text="🔍 Reviews", callback_data="all_reviews")
         ],
         [
             InlineKeyboardButton(text="📞 Contact", callback_data="contact")
@@ -31,6 +32,7 @@ async def catalog_kb():
     for pizza in all_pizzas:
         keyboard.add(InlineKeyboardButton(text=pizza.name, 
                                           callback_data=f'pizza_{pizza.id}'))
+    keyboard.add(InlineKeyboardButton(text="🏠Menu", callback_data="menu"))
     return keyboard.adjust(3).as_markup()
 
 async def pizza_kb(pizza_id):
@@ -39,15 +41,17 @@ async def pizza_kb(pizza_id):
     
     keyboard = InlineKeyboardBuilder()
     keyboard.add(InlineKeyboardButton(text="⬅️Back",callback_data="catalog"),
-                 InlineKeyboardButton(text="🔍Reviews", callback_data="reviews"),
+                 InlineKeyboardButton(text="🔍Reviews", callback_data=f"about_pizza_{pizza_id}"),
                  InlineKeyboardButton(text="➕Add to Cart", callback_data=f"add_to_cart_{pizza_id}"))
     return keyboard.adjust(2).as_markup()
 
 async def add_to_cart_kb():
     keyboard = InlineKeyboardBuilder()
-    keyboard.add(InlineKeyboardButton(text="Small", callback_data="size_1"),
+    keyboard.row(InlineKeyboardButton(text="Small", callback_data="size_1"),
                  InlineKeyboardButton(text="Medium", callback_data="size_2"),
                  InlineKeyboardButton(text="Large", callback_data="size_3"))
+    keyboard.row(InlineKeyboardButton(text="⬅️Back", callback_data="back_to_pizza"))
+
 
     return keyboard.adjust(3).as_markup()   
 
@@ -59,7 +63,7 @@ async def choose_quantity_kb():
 
 async def proceed_to_pay():
     keyboard = InlineKeyboardBuilder()
-    keyboard.add(InlineKeyboardButton(text="🏠Menu", callback_data="menu"),
+    keyboard.add(InlineKeyboardButton(text="🍕Add pizza", callback_data="catalog"),
                 InlineKeyboardButton(text="🛒Cart", callback_data="cart"),
                 InlineKeyboardButton(text="💳Pay", callback_data="pay")
                  )
@@ -78,7 +82,7 @@ async def cart_kb(user_id):
             # First row: Pizza name & size
         keyboard.row(
             InlineKeyboardButton(
-                text=f"{pizza.name} | {pizza.size}",
+                text=f"{pizza.name} | {sizes[item.size]}",
                 callback_data=f"cart_{item.id}"
             )
         )
@@ -87,17 +91,34 @@ async def cart_kb(user_id):
         keyboard.row(
             InlineKeyboardButton(text="➕", callback_data=f"add_{item.id}"),
             InlineKeyboardButton(text=str(item.quantity), callback_data=f"quantity_{item.id}"),
-            InlineKeyboardButton(text="➖", callback_data=f"remove_{item.id}")
+            InlineKeyboardButton(text="➖", callback_data=f"remove_{item.id}"),
+            InlineKeyboardButton(text="❌", callback_data=f"delete_{item.id}")
         )
         
  
     keyboard.row(
         InlineKeyboardButton(text="🏠 Menu", callback_data="menu"),
-        InlineKeyboardButton(text="💳 Pay", callback_data="pay")
+        InlineKeyboardButton(text="💳 Pay", callback_data="pay"),
+        InlineKeyboardButton(text="🍕Add pizza", callback_data="catalog")
     )
     
     return keyboard.as_markup()
 
+async def reviews_kb(pizza_id : int):
+    keyboard = InlineKeyboardBuilder()
+    keyboard.add(
+        InlineKeyboardButton(text="📝 Leave a Review", callback_data=f"review_add_{pizza_id}"),
+        InlineKeyboardButton(text="🔙 Back to Pizzas", callback_data="back_to_pizza")
+    )
+    return keyboard.adjust(2).as_markup()  
+ 
+async def all_reviews_kb():
+    keyboard = InlineKeyboardBuilder()
+    keyboard.add(
+        InlineKeyboardButton(text="🏠Go to Menu", callback_data="menu"),
+        InlineKeyboardButton(text="🔙 Back to Catalog", callback_data="catalog")
+    )
+    return keyboard.adjust(2).as_markup()   
 
 async def pay_kb():
     keyboard = InlineKeyboardBuilder()  
