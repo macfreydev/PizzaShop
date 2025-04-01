@@ -1,6 +1,5 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-
 from app.database.data import sizes
 from app.database.requests import add_pizzas, get_all_pizzas, get_cart, get_pizza
 

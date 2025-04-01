@@ -2,7 +2,6 @@ from aiogram import F, Router
 from aiogram.filters import Command, Filter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
-
 from app.admin.keyboards import (
     confirmation_kb,
     get_edit_pizza_kb,
@@ -85,9 +84,9 @@ async def back_to_menu(callback: CallbackQuery):
     await callback.answer()
 
 
-@admin.callback_query(F.data.startswith("pizza_"))
+@admin.callback_query(F.data.startswith("admin_pizza_"))
 async def show_pizza_detail(callback: CallbackQuery):
-    pizza_id = int(callback.data.split("_")[1])
+    pizza_id = int(callback.data.split("_")[2])
     pizza = await get_pizza(pizza_id)
 
     if pizza:
@@ -232,22 +231,21 @@ async def confirm_pizza_handler(callback: CallbackQuery, state: FSMContext):
 
     data = await state.get_data()
 
-    pizza_data = {
-        "name": data["pizza_name"],
-        "price": int(data["pizza_price"]),
-        "about": data["pizza_description"],
-        "image": data["pizza_image"],
-        "size": data["pizza_size"],
-        "onsale": data["pizza_sale"],
-    }
+    from app.database.requests import add_new_pizza
 
-    await add_pizza(pizza_data)
+    # Call function to add the pizza
+    await add_new_pizza(
+        name=data["pizza_name"],
+        price=float(data["pizza_price"]),
+        about=data["pizza_description"],
+        image=data["pizza_image"],
+        size=data["pizza_size"],
+        onsale=data["pizza_sale"],
+    )
 
     await state.clear()
 
-    await callback.message.answer(
-        "✅ Pizza added successfully!",
-    )
+    await callback.message.answer("✅ Pizza added successfully!")
     await callback.message.answer(
         "🍕 Pizza Catalog", reply_markup=await get_pizzas_kb()
     )
@@ -312,7 +310,6 @@ async def edit_property_handler(callback: CallbackQuery, state: FSMContext):
     elif property_name == "image":
         prompt = "Send a new image for the pizza:"
 
-    # Set state and show prompt
     await state.set_state(EditPizzaStates.waiting_for_value)
     await callback.message.answer(prompt)
     await callback.answer()

@@ -1,8 +1,7 @@
-from sqlalchemy import delete, func, select
-
 from app.database.data import reviews_start
 from app.database.db import async_session
 from app.database.models import Admin, Cart, Pizza, Review, User
+from sqlalchemy import delete, func, select
 
 
 def connection(func):
