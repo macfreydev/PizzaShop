@@ -13,3 +13,7 @@ class PizzaStates(StatesGroup):
     waiting_for_pizza_sale = State()
     waiting_for_pizza_size = State()
     waiting_for_pizza_confirm = State()
+
+
+class EditPizzaStates(StatesGroup):
+    waiting_for_value = State()

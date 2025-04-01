@@ -1,41 +1,54 @@
+from sqlalchemy import delete, func, select
+
+from app.database.data import reviews_start
 from app.database.db import async_session
-from app.database.models import User, Pizza, Admin, Cart, Review, Rating
-from sqlalchemy import func, select, delete
-from app.database.data import pizzas, reviews_start
+from app.database.models import Admin, Cart, Pizza, Review, User
+
 
 def connection(func):
     async def inner(*args, **kwargs):
         async with async_session() as session:
             return await func(session, *args, **kwargs)
+
     return inner  # returns the inner function
 
-# User requests
 
+# User requests
 async def set_user(tg_id):
     async with async_session() as session:
         user = await session.scalar(select(User).where(User.tg_id == tg_id))
-        
         if not user:
             session.add(User(tg_id=tg_id))
             await session.commit()
 
+
 # Pizza requests
 async def add_pizzas():
     async with async_session() as session:
-        existing = await session.scalar(select(Pizza))
-        if existing:
-            pass
-            
-        for pizza in pizzas:
-            new_pizza = Pizza(
-                name=pizza["name"],
-                price=pizza["price"],
-                about=pizza["about"],
-                image=pizza["image"],
-                onsale=pizza["onsale"]
+        result = await session.execute(select(func.count()).select_from(Pizza))
+        count = result.scalar()
+
+        if count > 0:
+            # Pizzas already exist, skip
+            return
+
+        from app.database.data import pizzas
+
+        for pizza_data in pizzas:
+            if "size" not in pizza_data or pizza_data["size"] is None:
+                pizza_data["size"] = "Medium"  # Default size
+
+            pizza = Pizza(
+                name=pizza_data["name"],
+                price=pizza_data["price"],
+                about=pizza_data["about"],
+                image=pizza_data["image"],
+                size=pizza_data["size"],
+                onsale=pizza_data["onsale"],
             )
-            session.add(new_pizza)
-        await session.commit() 
+            session.add(pizza)
+
+        await session.commit()
 
 
 async def get_all_pizzas():
@@ -43,14 +56,13 @@ async def get_all_pizzas():
         result = await session.execute(select(Pizza))
         return result.scalars().all()
 
-  
+
 async def get_pizza(id: int):
     async with async_session() as session:
-        result = await session.scalar(
-            select(Pizza).where(Pizza.id == id)
-        )
+        result = await session.scalar(select(Pizza).where(Pizza.id == id))
         return result
-    
+
+
 async def delete_pizza(pizza_id: int):
     async with async_session() as session:
         pizza = await session.get(Pizza, pizza_id)
@@ -59,7 +71,8 @@ async def delete_pizza(pizza_id: int):
             await session.commit()
             return True
         return False
-    
+
+
 async def add_pizza(data: dict):
     async with async_session() as session:
         new_pizza = Pizza(**data)
@@ -67,7 +80,7 @@ async def add_pizza(data: dict):
         await session.commit()
 
 
-#Cart requests
+# Cart requests
 async def add_to_cart(user_id: int, pizza_id: int, _size: int, _quantity: int):
     async with async_session() as session:
         user = await session.scalar(select(User).where(User.tg_id == user_id))
@@ -75,9 +88,12 @@ async def add_to_cart(user_id: int, pizza_id: int, _size: int, _quantity: int):
         if not user or not pizza:
             return False
         else:
-            session.add(Cart(user_id=user.id, pizza_id=pizza.id, size=_size, quantity=_quantity))
+            session.add(
+                Cart(user_id=user.id, pizza_id=pizza.id, size=_size, quantity=_quantity)
+            )
             await session.commit()
             return True
+
 
 async def add_quantity(cart_id: int):
     async with async_session() as session:
@@ -87,8 +103,8 @@ async def add_quantity(cart_id: int):
             await session.commit()
             return True
         return False
-    
-    
+
+
 async def remove_quantity(cart_id: int):
     async with async_session() as session:
         cart_item = await session.get(Cart, cart_id)
@@ -97,51 +113,60 @@ async def remove_quantity(cart_id: int):
             await session.commit()
             return True
         return False
-    
 
-async def delete_cart_item(cart_id: int): 
+
+async def delete_cart_item(cart_id: int):
     async with async_session() as session:
         query = delete(Cart).where(Cart.id == cart_id)
-        result = await session.execute(query)  
+        result = await session.execute(query)
         await session.commit()
 
         if result.rowcount == 0:  # If no rows were deleted, the item wasn't in the cart
             return False
         return True
-    
+
+
 async def get_cart(user_id: int):
     async with async_session() as session:
-       user = await session.scalar(select(User).where(User.tg_id == user_id))
-       return await session.scalars(select(Cart).where(Cart.user_id == user.id))
-        
+        user = await session.scalar(select(User).where(User.tg_id == user_id))
+        return await session.scalars(select(Cart).where(Cart.user_id == user.id))
+
 
 async def check_cart(user_id: int):
     async with async_session() as session:
         user = await session.scalar(select(User).where(User.tg_id == user_id))
         cart = await session.scalar(select(Cart).where(Cart.user_id == user.id))
-        
+
         if not cart:
-            return False 
+            return False
         return True
-    
-# Reviews 
+
+
+# Reviews
 async def add_reviews():
     async with async_session() as session:
         for review_data in reviews_start:
-            
+
             review = Review(**review_data)
             session.add(review)
         await session.commit()
 
+
 async def get_reviews(pizza_id: int):
     async with async_session() as session:
-        return (await session.execute(select(Review).where(Review.pizza_id == pizza_id))).scalars().all()
-    
+        return (
+            (await session.execute(select(Review).where(Review.pizza_id == pizza_id)))
+            .scalars()
+            .all()
+        )
+
+
 async def get_all_reviews():
     async with async_session() as session:
         return (await session.execute(select(Review))).scalars().all()
 
-async def add_review(data : dict):
+
+async def add_review(data: dict):
     async with async_session() as session:
         new_review = Review(**data)
         session.add(new_review)
@@ -150,7 +175,9 @@ async def add_review(data : dict):
 
 async def delete_pizza_reviews(pizza_id: int):
     async with async_session() as session:
-        reviews = await session.scalars(select(Review).where(Review.pizza_id == pizza_id))
+        reviews = await session.scalars(
+            select(Review).where(Review.pizza_id == pizza_id)
+        )
         for review in reviews:
             if review:
                 await session.delete(review)
@@ -159,15 +186,19 @@ async def delete_pizza_reviews(pizza_id: int):
         return False
 
 
-
 async def count_reviews(pizza_id: int):
     async with async_session() as session:
-        result = await session.scalar(select(func.count(Review.id)).where(Review.pizza_id == pizza_id))
+        result = await session.scalar(
+            select(func.count(Review.id)).where(Review.pizza_id == pizza_id)
+        )
         return result if result is not None else 0
+
 
 async def delete_user_reviews(user_id: int):
     async with async_session() as session:
-        reviews = await session.scalars(select(Review).where(Review.pizza_id == user_id))
+        reviews = await session.scalars(
+            select(Review).where(Review.pizza_id == user_id)
+        )
         for review in reviews:
             if review:
                 await session.delete(review)
@@ -182,21 +213,31 @@ async def add_admin(user_id: int):
         session.add(Admin(user_id=user_id))
         await session.commit()
 
+
 async def get_admin(user_id: int):
     async with async_session() as session:
-        result = await session.scalar(
-            select(Admin).where(Admin.user_id == user_id)
-        )
+        result = await session.scalar(select(Admin).where(Admin.user_id == user_id))
         return result
-    
+
+
 async def get_all_admins():
     async with async_session() as session:
         result = await session.execute(
-            select(Admin, User)
-            .join(User, User.id == Admin.user_id)
+            select(Admin, User).join(User, User.id == Admin.user_id)
         )
-        
+
         admin_users = result.fetchall()
         return [user.tg_id for _, user in admin_users]
 
 
+async def update_pizza_property(pizza_id: int, property_name: str, value):
+    async with async_session() as session:
+        pizza = await session.get(Pizza, pizza_id)
+        if not pizza:
+            return False
+
+        # Update the specified property
+        setattr(pizza, property_name, value)
+
+        await session.commit()
+        return True
