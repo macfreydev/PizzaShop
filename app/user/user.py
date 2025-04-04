@@ -26,7 +26,6 @@ async def start(message: Message):
             f"All of this and more, right here! Let’s get started! 🍕🔥"
         )
 
-        # Send the welcome message with the keyboard
         await message.answer(
             welcome_message, parse_mode="HTML", reply_markup=keyboard.menu_kb()
         )
@@ -39,11 +38,9 @@ async def start(message: Message):
 @user.callback_query(F.data == "catalog")
 async def catalog(callback: CallbackQuery):
     try:
-        # Delete the current message
         await callback.message.delete()
         await callback.answer()
 
-        # Send the new catalog message with the keyboard
         await callback.message.answer(
             text="🍕 Catalog", reply_markup=await keyboard.catalog_kb()
         )
@@ -58,7 +55,6 @@ async def catalog(callback: CallbackQuery):
 @user.callback_query(F.data.startswith("pizza_"))
 async def pizza_info(callback: CallbackQuery, state: FSMContext):
     try:
-        # Delete the current message
         await callback.message.delete()
         await callback.answer()
 
@@ -66,16 +62,13 @@ async def pizza_info(callback: CallbackQuery, state: FSMContext):
         pizza_id = int(callback.data.split("_")[1])
         await state.update_data(pizza_id=pizza_id)
 
-        # Fetch the pizza details
         pizza = await request.get_pizza(pizza_id)
         if pizza:
-            # Check if the pizza is on sale and prepare the sale text
             on_sale = pizza.onsale
             sale_text = ""
             if on_sale:
                 sale_text = "<b>🔥🔥 💸On Sale! 💸 🔥🔥</b>\n"
 
-            # Prepare the caption for the pizza
             caption = (
                 f"<b>{pizza.name}</b>\n"
                 f"{sale_text}"
@@ -84,7 +77,6 @@ async def pizza_info(callback: CallbackQuery, state: FSMContext):
                 "<i>Click below to add this pizza to your cart!</i>"
             )
 
-            # Send the pizza photo and caption with the pizza keyboard
             await callback.message.answer_photo(
                 photo=pizza.image,
                 caption=caption,
@@ -92,7 +84,6 @@ async def pizza_info(callback: CallbackQuery, state: FSMContext):
                 reply_markup=await keyboard.pizza_kb(pizza_id),
             )
         else:
-            # Handle the case where pizza data isn't available
             await callback.message.answer(
                 text="Sorry, we couldn't find the pizza details."
             )
@@ -107,10 +98,8 @@ async def pizza_info(callback: CallbackQuery, state: FSMContext):
 @user.callback_query(F.data == "back_to_pizza")
 async def back_to_pizza(callback: CallbackQuery, state: FSMContext):
     try:
-        # Clear the state
         await state.clear()
 
-        # Edit the message to show the catalog again
         await callback.message.edit_text(
             text="🍕 Catalog", reply_markup=await keyboard.catalog_kb()
         )
@@ -124,13 +113,9 @@ async def back_to_pizza(callback: CallbackQuery, state: FSMContext):
 @user.callback_query(F.data.startswith("add_to_cart_"))
 async def add_to_cart(callback: CallbackQuery, state: FSMContext):
     try:
-        # Delete the current message
         await callback.message.delete()
-
-        # Set the state for size selection
         await state.set_state(AddCart.size)
 
-        # Send a message asking the user to choose the size
         await callback.message.answer(
             text="Choose the size of the pizza",
             reply_markup=await keyboard.add_to_cart_kb(),
@@ -146,13 +131,9 @@ async def add_to_cart(callback: CallbackQuery, state: FSMContext):
 @user.callback_query(AddCart.size)
 async def size(callback: CallbackQuery, state: FSMContext):
     try:
-        # Update the state with the chosen pizza size
         await state.update_data(size=callback.data.split("_")[1])
-
-        # Set the next state for quantity selection
         await state.set_state(AddCart.quantity)
 
-        # Edit the message to ask for the pizza quantity
         await callback.message.edit_text(
             text="Enter the quantity of the pizza",
             reply_markup=await keyboard.choose_quantity_kb(),
@@ -168,16 +149,13 @@ async def size(callback: CallbackQuery, state: FSMContext):
 @user.callback_query(AddCart.quantity)
 async def quantity(callback: CallbackQuery, state: FSMContext):
     try:
-        # Update the state with the chosen quantity
         await state.update_data(quantity=callback.data.split("_")[1])
 
-        # Retrieve the state data
         data = await state.get_data()
         pizza_id = data["pizza_id"]
         size = int(data["size"])
         quantity = data["quantity"]
 
-        # Attempt to add the pizza to the cart
         if await request.add_to_cart(callback.from_user.id, pizza_id, size, quantity):
             # Clear the state and send a success message
             await state.clear()
@@ -186,12 +164,10 @@ async def quantity(callback: CallbackQuery, state: FSMContext):
                 reply_markup=await keyboard.proceed_to_pay(),
             )
         else:
-            # If there is an error adding to the cart, notify the user
             await callback.message.answer(
                 "Error adding to cart. Please try again later."
             )
 
-        # Acknowledge the callback query
         await callback.answer()
 
     except Exception as e:
@@ -205,17 +181,13 @@ async def quantity(callback: CallbackQuery, state: FSMContext):
 @user.callback_query(F.data == "menu")
 async def menu(callback: CallbackQuery):
     try:
-        # Edit the message to show the menu
         await callback.message.edit_text(
             text="🍕 Menu", reply_markup=keyboard.menu_kb()
         )
-
-        # Acknowledge the callback query
         await callback.answer()
 
     except Exception as e:
         print(f"Error in menu callback: {e}")
-        # Send an error message to the user if something goes wrong
         await callback.message.answer(
             "An error occurred while loading the menu. Please try again later."
         )
@@ -225,7 +197,6 @@ async def menu(callback: CallbackQuery):
 @user.callback_query(F.data == "cart")
 async def cart(callback: CallbackQuery):
     try:
-        # Check the user's cart
         cart = await request.check_cart(callback.from_user.id)
 
         if not cart:
