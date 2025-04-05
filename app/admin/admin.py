@@ -1,7 +1,11 @@
+import asyncio
+import logging
+
 from aiogram import F, Router
 from aiogram.filters import Command, Filter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
+
 from app.admin.keyboards import (
     confirmation_kb,
     get_edit_pizza_kb,
@@ -12,6 +16,7 @@ from app.admin.keyboards import (
     get_yes_no_kb,
 )
 from app.admin.states import AdminStates, EditPizzaStates, PizzaStates
+from app.database.exceptions import DatabaseError
 from app.database.requests import (
     add_admin,
     add_pizza,
@@ -22,28 +27,39 @@ from app.database.requests import (
     update_pizza_property,
 )
 
+logger = logging.getLogger(__name__)
+
 admin = Router()
 
 
 class Admin(Filter):
     async def __call__(self, message: Message):
-        ADMIN_IDS = await get_all_admins()
-        return message.from_user.id in ADMIN_IDS
+        try:
+            ADMIN_IDS = await get_all_admins()
+            return message.from_user.id in ADMIN_IDS
+        except DatabaseError as e:
+            logger.error(f"Error checking admin status: {e}")
+            return False
 
 
 @admin.message(Admin(), Command("admin"))
 async def start(message: Message):
-    await add_pizzas()
-    await message.answer(
-        f"""🍕 Welcome {message.from_user.first_name} to the admin panel""",
-        reply_markup=await get_menu_keyboard(),
-    )
+    try:
+        await add_pizzas()
+        await message.answer(
+            f"""🍕 Welcome {message.from_user.first_name} to the admin panel""",
+            reply_markup=await get_menu_keyboard(),
+        )
+    except DatabaseError as e:
+        logger.error(f"Error starting admin panel: {e}")
+        await message.answer(
+            "There was an error accessing the admin panel. Please try again later."
+        )
 
 
 @admin.callback_query(F.data == "admin_catalog")
 async def admin_catalog_handler(callback: CallbackQuery):
     try:
-
         await callback.message.edit_text(
             text="🍕 Pizza Catalog", reply_markup=await get_pizzas_kb()
         )
@@ -55,7 +71,7 @@ async def admin_catalog_handler(callback: CallbackQuery):
         )
 
 
-@admin.callback_query(F.data == "add_admin")
+@admin.callback_query(F.data == "admin_add_admin")
 async def add_admin_handler(callback: CallbackQuery, state: FSMContext):
     await state.set_state(AdminStates.waiting_for_admin_id)
     await callback.message.answer("Enter the user id to add as admin:")
@@ -64,11 +80,16 @@ async def add_admin_handler(callback: CallbackQuery, state: FSMContext):
 
 @admin.message(AdminStates.waiting_for_admin_id, F.text.isdigit())
 async def add_admin_message(message: Message, state: FSMContext):
-    await add_admin(int(message.text))
-    await message.answer(
-        "Admin added successfully!", reply_markup=await get_menu_keyboard()
-    )  # beautify later on - it should be a pop up
-    await state.clear()
+    try:
+        await add_admin(int(message.text))
+        await message.answer("ADMIN ADDED SUCCESSFULLY ✅", show_alert=True)
+        await asyncio.sleep(1)
+        await message.answer("🍕 Admin Menu", reply_markup=await get_menu_keyboard())
+        await state.clear()
+    except DatabaseError as e:
+        logger.error(f"Error adding admin: {e}")
+        await message.answer("Failed to add admin. Please try again later.")
+        await state.clear()
 
 
 @admin.message(AdminStates.waiting_for_admin_id)
@@ -86,10 +107,14 @@ async def back_to_menu(callback: CallbackQuery):
 
 @admin.callback_query(F.data.startswith("admin_pizza_"))
 async def show_pizza_detail(callback: CallbackQuery):
-    pizza_id = int(callback.data.split("_")[2])
-    pizza = await get_pizza(pizza_id)
+    try:
+        pizza_id = int(callback.data.split("_")[2])
+        pizza = await get_pizza(pizza_id)
 
-    if pizza:
+        if not pizza:
+            await callback.answer("Pizza not found!", show_alert=True)
+            return
+
         status_icon = "🟢🟢🟢 ON SALE" if pizza.onsale else "⭕️"
         price_display = f"${pizza.price:,.2f}"
 
@@ -104,26 +129,44 @@ async def show_pizza_detail(callback: CallbackQuery):
         )
 
         await callback.message.delete()
-
         await callback.message.answer_photo(
             photo=pizza.image,
             caption=caption,
             reply_markup=await get_pizza_detail_kb(pizza_id),
             parse_mode="HTML",
         )
-    else:
-        await callback.answer("Pizza not found!", show_alert=True)
+    except DatabaseError as e:
+        logger.error(f"Database error: {str(e)}")
+        await callback.answer("Failed to retrieve pizza details", show_alert=True)
+    except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}")
+        await callback.answer("An unexpected error occurred", show_alert=True)
 
-    await callback.answer("")
+    await callback.answer()
 
 
 @admin.callback_query(F.data.startswith("delete_pizza_"))
 async def delete_pizza_handler(callback: CallbackQuery):
-    pizza_id = int(callback.data.split("_")[-1])
-    await delete_pizza(pizza_id)
-    await callback.message.answer(
-        "🍕 Pizza Catalog", reply_markup=await get_pizzas_kb()
-    )
+    try:
+        pizza_id = int(callback.data.split("_")[-1])
+        result = await delete_pizza(pizza_id)
+        if result:
+            await callback.message.answer(
+                "🍕 Pizza deleted successfully.", reply_markup=await get_pizzas_kb()
+            )
+        else:
+            await callback.answer(
+                "Pizza not found or could not be deleted.", show_alert=True
+            )
+    except DatabaseError as e:
+        logger.error(f"Error deleting pizza: {e}")
+        await callback.answer(
+            "Failed to delete pizza. Please try again.", show_alert=True
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        await callback.answer("An unexpected error occurred", show_alert=True)
+
     await callback.answer()
 
 
@@ -212,7 +255,7 @@ async def set_pizza_size(callback: CallbackQuery, state: FSMContext):
     summary = (
         f"📝 <b>Pizza Summary:</b>\n\n"
         f"• Name: {data['pizza_name']}\n"
-        f"• Price: ${data['pizza_price']}\n"
+        f"• Price: {data['pizza_price']} RUB\n"
         f"• Size: {data['pizza_size']}\n"
         f"• On Sale: {'Yes' if data['pizza_sale'] else 'No'}\n\n"
         f"<b>Description:</b>\n{data['pizza_description']}\n\n"
@@ -233,7 +276,6 @@ async def confirm_pizza_handler(callback: CallbackQuery, state: FSMContext):
 
     from app.database.requests import add_new_pizza
 
-    # Call function to add the pizza
     await add_new_pizza(
         name=data["pizza_name"],
         price=float(data["pizza_price"]),
@@ -371,3 +413,78 @@ async def show_updated_pizza(message: Message, pizza):
         )
     else:
         await message.answer("Pizza not found!")
+
+
+# handle the size edit callback
+@admin.callback_query(F.data.startswith("size_edit_"))
+async def handle_size_edit(callback: CallbackQuery):
+    try:
+        parts = callback.data.split("_")
+        pizza_id = int(parts[2])
+        size = parts[3]  # S, M, or L
+
+        success = await update_pizza_property(pizza_id, "size", size)
+
+        if success:
+            pizza = await get_pizza(pizza_id)
+            await callback.answer(f"Size updated to {size}", show_alert=True)
+
+            await callback.message.delete()
+            await show_updated_pizza_callback(callback, pizza)
+        else:
+            await callback.answer("Failed to update size", show_alert=True)
+    except Exception as e:
+        logger.error(f"Error updating size: {e}")
+        await callback.answer("An error occurred", show_alert=True)
+
+
+# handle the sale status edit callback
+@admin.callback_query(F.data.startswith("sale_"))
+async def handle_sale_edit(callback: CallbackQuery):
+    if "edit" not in callback.data:
+        return  # Only process edit callbacks here
+    try:
+        parts = callback.data.split("_")
+        sale_status = parts[1] == "yes"  # true if "yes", false if "no"
+        pizza_id = int(parts[3])
+
+        success = await update_pizza_property(pizza_id, "onsale", sale_status)
+
+        if success:
+            pizza = await get_pizza(pizza_id)
+            status_text = "ON SALE" if sale_status else "NOT ON SALE"
+            await callback.answer(f"Pizza is now {status_text}", show_alert=True)
+
+            await callback.message.delete()
+            await show_updated_pizza_callback(callback, pizza)
+        else:
+            await callback.answer("Failed to update sale status", show_alert=True)
+    except Exception as e:
+        logger.error(f"Error updating sale status: {e}")
+        await callback.answer("An error occurred", show_alert=True)
+
+
+async def show_updated_pizza_callback(callback: CallbackQuery, pizza):
+    """Show the updated pizza after editing (callback version)"""
+    if pizza:
+        status_icon = "🟢" if pizza.onsale else "⭕️"
+        price_display = f"${pizza.price:,.2f}"
+
+        caption = (
+            f"     🍕 <b>{pizza.name.upper()}</b>\n\n"
+            f"📝 <b>Details</b>\n"
+            f"• Size: {pizza.size}\n"
+            f"• Price: {price_display}\n"
+            f"• Status: {status_icon} \n\n"
+            f"📋 <b>Description</b>\n"
+            f"{pizza.about}\n\n"
+        )
+
+        await callback.message.answer_photo(
+            photo=pizza.image,
+            caption=caption,
+            reply_markup=await get_pizza_detail_kb(pizza.id),
+            parse_mode="HTML",
+        )
+    else:
+        await callback.message.answer("Pizza not found!")

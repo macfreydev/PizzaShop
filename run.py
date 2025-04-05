@@ -2,6 +2,7 @@ import asyncio
 import logging
 
 from aiogram import Bot, Dispatcher
+
 from app.admin.admin import admin
 from app.database.db import init_db
 from app.user.user import user
