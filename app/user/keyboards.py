@@ -105,18 +105,12 @@ async def choose_quantity_kb():
 
 
 async def proceed_to_pay():
-    try:
-        keyboard = InlineKeyboardBuilder()
-        keyboard.add(
-            InlineKeyboardButton(text="🍕Add pizza", callback_data="catalog"),
-            InlineKeyboardButton(text="🛒Cart", callback_data="cart"),
-            InlineKeyboardButton(text="💳Pay", callback_data="pay"),
-        )
-        return keyboard.adjust(3).as_markup()
-
-    except Exception as e:
-        print(f"Error in proceed_to_pay: {e}")
-        return None  # Return None to indicate failure
+    kb = InlineKeyboardBuilder()
+    kb.button(text="🛒 View Cart", callback_data="cart")
+    kb.button(text="💳 Proceed to Pay", callback_data="pay")
+    kb.button(text="🍕 Back to Catalog", callback_data="catalog")
+    kb.adjust(1)
+    return kb.as_markup()
 
 
 async def cart_kb(user_id):
@@ -219,3 +213,29 @@ async def pay_kb():
     except Exception as e:
         print(f"Error in pay_kb: {e}")
         return None  # Return None to signal failure
+
+
+# Add these keyboard functions for the payment process
+
+async def payment_methods_kb():
+    kb = InlineKeyboardBuilder()
+    kb.button(text="💳 Credit Card", callback_data="payment_card")
+    kb.button(text="💵 Cash on Delivery", callback_data="payment_cash")
+    kb.button(text="🔙 Back to Cart", callback_data="cart")
+    kb.adjust(1)
+    return kb.as_markup()
+
+async def payment_success_kb():
+    kb = InlineKeyboardBuilder()
+    kb.button(text="🍕 Order More Pizza", callback_data="catalog")
+    kb.button(text="🏠 Back to Menu", callback_data="menu")
+    kb.adjust(1)
+    return kb.as_markup()
+
+async def payment_failed_kb():
+    kb = InlineKeyboardBuilder()
+    kb.button(text="🔄 Try Again", callback_data="pay")
+    kb.button(text="🛒 Back to Cart", callback_data="cart")
+    kb.button(text="🏠 Back to Menu", callback_data="menu")
+    kb.adjust(1)
+    return kb.as_markup()

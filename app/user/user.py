@@ -7,6 +7,9 @@ import app.database.requests as request
 import app.user.keyboards as keyboard
 from app.database.data import sizes
 from app.user.states import AddCart
+import asyncio
+import random
+from datetime import datetime
 
 user = Router()
 
@@ -284,10 +287,35 @@ async def delete_item(callback: CallbackQuery):
 
 
 @user.callback_query(F.data == "pay")
-async def pay(callback: CallbackQuery):
+async def pay(callback: CallbackQuery, state: FSMContext):
     try:
+        # Get cart items and calculate total
+        cart_items = await request.get_cart(callback.from_user.id)
+        if not cart_items:
+            await callback.answer("Your cart is empty!")
+            await callback.message.edit_text(
+                "Your cart is empty! Add some pizzas first.",
+                reply_markup=keyboard.menu_kb()
+            )
+            return
+
+        # Calculate total
+        total = 0
+        order_summary = "🛒 <b>Your Order:</b>\n\n"
+
+        for item in cart_items:
+            pizza = await request.get_pizza(item.pizza_id)
+            item_total = pizza.price * int(item.quantity)
+            total += item_total
+            order_summary += f"• {pizza.name} (Size: {sizes[item.size]}, Qty: {item.quantity}) - {item_total} RUB\n"
+
+        order_summary += f"\n<b>Total:</b> {total} RUB"
+
+        # Show payment options
         await callback.message.edit_text(
-            text="💳 Pay", reply_markup=await keyboard.pay_kb()
+            f"{order_summary}\n\n💳 Select payment method:",
+            parse_mode="HTML",
+            reply_markup=await keyboard.payment_methods_kb()
         )
 
     except Exception as e:
@@ -295,6 +323,71 @@ async def pay(callback: CallbackQuery):
         await callback.message.answer("An error occurred. Please try again later.")
 
     await callback.answer()
+
+# mimic payment
+@user.callback_query(F.data.startswith("payment_"))
+async def process_payment(callback: CallbackQuery):
+    payment_method = callback.data.split("_")[1]
+
+    try:
+        # Show processing message
+        await callback.message.edit_text(
+            f"⏳ Processing your payment...",
+            parse_mode="HTML"
+        )
+
+        # Simulate processing delay
+        await asyncio.sleep(2)
+
+        # Generate order ID
+        order_id = f"ORDER-{random.randint(1000, 9999)}"
+
+        # For cash payment, always succeed
+        if payment_method == "cash":
+            success = True
+        else:
+            # For card payment, simulate success/failure (90% success rate)
+            success = random.random() < 0.9
+
+        if success:
+            # Payment successful
+            await callback.message.edit_text(
+                f"✅ <b>Payment Successful!</b>\n\n"
+                f"Your order #{order_id} has been confirmed.\n\n"
+                f"Payment method: {payment_method.title()}\n"
+                f"Order time: {datetime.now().strftime('%H:%M, %d %b %Y')}\n\n"
+                f"🚚 Your delicious pizza is on the way!",
+                parse_mode="HTML",
+                reply_markup=await keyboard.payment_success_kb()
+            )
+
+            # Clear the cart
+            await clear_cart(callback.from_user.id)
+
+        else:
+            # Payment failed
+            await callback.message.edit_text(
+                f"❌ <b>Payment Failed</b>\n\n"
+                f"Sorry, we couldn't process your payment.\n"
+                f"Please try again or choose a different payment method.",
+                parse_mode="HTML",
+                reply_markup=await keyboard.payment_failed_kb()
+            )
+
+    except Exception as e:
+        print(f"Error in process_payment: {e}")
+        await callback.message.edit_text(
+            "An error occurred while processing your payment. Please try again.",
+            reply_markup=await keyboard.menu_kb()
+        )
+    await callback.answer()
+
+
+# Helper function to clear the cart
+async def clear_cart(user_id):
+    cart_items = await request.get_cart(user_id)
+    for item in cart_items:
+        await request.delete_cart_item(item.id)
 
 
 @user.callback_query(F.data.startswith("about_pizza"))

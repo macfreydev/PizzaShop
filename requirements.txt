@@ -28,6 +28,8 @@ pydantic==2.10.6
 pydantic_core==2.27.2
 pyflakes==3.3.2
 python-decouple==3.8
+redis==5.0.1
 SQLAlchemy==2.0.39
 typing_extensions==4.12.2
 yarl==1.18.3
+asyncpg==0.28.0
